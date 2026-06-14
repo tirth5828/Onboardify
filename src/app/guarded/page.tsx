@@ -8,18 +8,15 @@ import {
   Check,
   Clock3,
   ExternalLink,
-  Eye,
-  Fingerprint,
   Lock,
   ShieldAlert,
   ShieldCheck,
-  WalletCards,
 } from "lucide-react";
 
 import { useJourney } from "@/components/app-providers";
 import { LoadingScreen } from "@/components/loading-screen";
 import { PageShell } from "@/components/page-shell";
-import { arcExplorer, baseSepoliaExplorer } from "@/lib/networks";
+import { baseSepoliaExplorer } from "@/lib/networks";
 
 function short(value: string | null) {
   if (!value) return "pending";
@@ -59,9 +56,6 @@ export default function GuardedPage() {
       </PageShell>
     );
   }
-
-  const guardedDone =
-    state.guarded.cancelledFlaggedIntent && state.guarded.executedSafeIntent;
 
   async function confirm(action: "cancel_flagged" | "execute_safe") {
     await post(
@@ -237,113 +231,6 @@ export default function GuardedPage() {
           )}
         </article>
       </div>
-
-      <section
-        className={`mt-6 overflow-hidden rounded-xl border ${
-          guardedDone ? "border-[#101828] bg-[#101828] text-white" : "border-[#e3e8ef] bg-white"
-        }`}
-      >
-        <div className="grid lg:grid-cols-[.8fr_1.2fr]">
-          <div className="p-6 lg:p-8">
-            <div className="mb-8 flex items-center justify-between">
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#315efb] text-white">
-                <Fingerprint />
-              </span>
-              <span className="rounded-full bg-white/10 px-3 py-2 text-xs font-bold">
-                ARC / +10
-              </span>
-            </div>
-            <p className="eyebrow text-white/50">Private settlement</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em]">
-              Break the public payment link.
-            </h2>
-            <p className="mt-4 text-sm leading-6 text-white/60">
-              Dynamic authenticates the user, Unlink shields the balance, and a
-              fresh payer EOA purchases an x402 risk report through Circle Gateway.
-            </p>
-            <button
-              onClick={() => void post("/api/privacy/pay", {}, "privacy")}
-              disabled={!guardedDone || state.privacy.status === "complete" || busy === "privacy"}
-              className="button-primary mt-7 w-full !border-[#315efb] !bg-[#315efb]"
-            >
-              {state.privacy.status === "complete" ? (
-                <>
-                  <Check size={16} /> Private payment complete
-                </>
-              ) : (
-                <>
-                  Run private nanopayment <ArrowRight size={16} />
-                </>
-              )}
-            </button>
-          </div>
-
-          <div className="border-t border-white/10 bg-white/[.045] p-6 lg:border-t-0 lg:border-l lg:p-8">
-            <p className="eyebrow mb-5 text-white/45">Privacy trace</p>
-            <div className="space-y-3">
-              {[
-                {
-                  icon: WalletCards,
-                  label: "Dynamic wallet",
-                  value: short(state.walletAddress),
-                  complete: guardedDone,
-                },
-                {
-                  icon: Eye,
-                  label: "Private Unlink account",
-                  value: short(state.privacy.unlinkAddress),
-                  complete: state.privacy.status === "complete",
-                },
-                {
-                  icon: Fingerprint,
-                  label: "Ephemeral payer",
-                  value: short(state.privacy.payerAddress),
-                  complete: state.privacy.status === "complete",
-                },
-                {
-                  icon: ShieldCheck,
-                  label: "x402 resource paid",
-                  value: short(state.privacy.paymentTxHash),
-                  complete: state.privacy.status === "complete",
-                },
-              ].map((step, index) => (
-                <div
-                  key={step.label}
-                  className="flex items-center gap-4 rounded-2xl border border-white/9 bg-white/[.055] p-4"
-                >
-                  <span className="text-xs font-bold text-white/30">0{index + 1}</span>
-                  <step.icon size={17} className={step.complete ? "text-[#7ea0ff]" : "text-white/25"} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold">{step.label}</p>
-                    <p className="mt-1 truncate font-mono text-[10px] text-white/45">
-                      {step.value}
-                    </p>
-                  </div>
-                  {step.complete && <Check size={15} className="text-[#7ea0ff]" />}
-                </div>
-              ))}
-            </div>
-            {state.privacy.paymentTxHash && (
-              <a
-                href={`${arcExplorer}/tx/${state.privacy.paymentTxHash}`}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-5 flex items-center justify-end gap-2 text-xs font-bold text-[#7ea0ff]"
-              >
-                Inspect Arc settlement <ExternalLink size={13} />
-              </a>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {summary.passportEligible && (
-        <div className="mt-6 flex justify-end">
-          <Link href="/passport" className="button-primary">
-            Verify humanity & claim passport <ArrowRight size={16} />
-          </Link>
-        </div>
-      )}
     </PageShell>
   );
 }
