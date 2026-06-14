@@ -64,6 +64,50 @@ export default function MirrorPage() {
     );
   }
 
+  type ApprovalStep = {
+    num: string;
+    label: string;
+    done: boolean;
+    active: boolean;
+    action: MirrorAction;
+    btnLabel: string;
+    btnClass: string;
+  };
+
+  const approvalSteps: ApprovalStep[] = [
+    {
+      num: "01",
+      label: "Sign unverified approval",
+      done: simulation.maliciousApprovalAccepted,
+      active: !simulation.maliciousApprovalAccepted,
+      action: "accept_malicious_approval",
+      btnLabel: "Sign",
+      btnClass: "button-danger",
+    },
+    {
+      num: "02",
+      label: "Inspect persistent authority",
+      done: simulation.maliciousApprovalInspected,
+      active:
+        simulation.maliciousApprovalAccepted &&
+        !simulation.maliciousApprovalInspected,
+      action: "inspect_malicious_approval",
+      btnLabel: "Inspect",
+      btnClass: "button-secondary",
+    },
+    {
+      num: "03",
+      label: "Revoke allowance · +20 pts",
+      done: simulation.maliciousApprovalRevoked,
+      active:
+        simulation.maliciousApprovalInspected &&
+        !simulation.maliciousApprovalRevoked,
+      action: "revoke_malicious_approval",
+      btnLabel: "Revoke",
+      btnClass: "button-primary",
+    },
+  ];
+
   return (
     <PageShell>
       <div className="mb-7 flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
@@ -196,49 +240,7 @@ export default function MirrorPage() {
           </div>
 
           <div className="mt-4 space-y-2">
-            {(
-              [
-                {
-                  num: "01",
-                  label: "Sign unverified approval",
-                  done: simulation.maliciousApprovalAccepted,
-                  active: !simulation.maliciousApprovalAccepted,
-                  action: "accept_malicious_approval" as MirrorAction,
-                  btnLabel: "Sign",
-                  btnClass: "button-danger",
-                },
-                {
-                  num: "02",
-                  label: "Inspect persistent authority",
-                  done: simulation.maliciousApprovalInspected,
-                  active:
-                    simulation.maliciousApprovalAccepted &&
-                    !simulation.maliciousApprovalInspected,
-                  action: "inspect_malicious_approval" as MirrorAction,
-                  btnLabel: "Inspect",
-                  btnClass: "button-secondary",
-                },
-                {
-                  num: "03",
-                  label: "Revoke allowance · +20 pts",
-                  done: simulation.maliciousApprovalRevoked,
-                  active:
-                    simulation.maliciousApprovalInspected &&
-                    !simulation.maliciousApprovalRevoked,
-                  action: "revoke_malicious_approval" as MirrorAction,
-                  btnLabel: "Revoke",
-                  btnClass: "button-primary",
-                },
-              ] as Array<{
-                num: string;
-                label: string;
-                done: boolean;
-                active: boolean;
-                action: MirrorAction;
-                btnLabel: string;
-                btnClass: string;
-              }>
-            ).map((step) => (
+            {approvalSteps.map((step) => (
               <div
                 key={step.num}
                 className={`flex items-center gap-3 rounded-lg px-4 py-3 ${
