@@ -113,13 +113,11 @@ export default function ExplorePage() {
 
   useEffect(() => {
     if (!["swap", "bridge"].includes(operation)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setRoute(null);
       return;
     }
-    setRouteLoading(true);
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
+      setRouteLoading(true);
       fetch("/api/routes/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -141,7 +139,6 @@ export default function ExplorePage() {
     return () => {
       window.clearTimeout(timer);
       controller.abort();
-      setRouteLoading(false);
     };
   }, [operation, asset, targetAsset, amount]);
 
