@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import {
   ArrowRight,
   Ban,
@@ -13,10 +13,12 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-import { useJourney } from "@/components/app-providers";
+import { useJourney, WalletContext } from "@/components/app-providers";
+import { WalletButton } from "@/components/wallet-button";
 import { LoadingScreen } from "@/components/loading-screen";
 import { PageShell } from "@/components/page-shell";
 import { baseSepoliaExplorer } from "@/lib/networks";
+import { useVault } from "@/lib/use-vault";
 
 function short(value: string | null) {
   if (!value) return "pending";
@@ -28,6 +30,11 @@ export default function GuardedPage() {
   const [flaggedQueued, setFlaggedQueued] = useState(false);
   const [safeQueued, setSafeQueued] = useState(false);
   const [countdown, setCountdown] = useState(8);
+  const [flaggedIntentId, setFlaggedIntentId] = useState<`0x${string}` | null>(null);
+  const [safeIntentId, setSafeIntentId] = useState<`0x${string}` | null>(null);
+  const [vaultBusy, setVaultBusy] = useState(false);
+  const vault = useVault();
+  const { showAuth, hideAuthFlow } = useContext(WalletContext);
 
   useEffect(() => {
     if (!safeQueued || countdown <= 0) return;
@@ -57,20 +64,87 @@ export default function GuardedPage() {
     );
   }
 
-  async function confirm(action: "cancel_flagged" | "execute_safe") {
-    await post(
-      "/api/guarded/confirm",
-      {
-        action,
-        intentId:
-          action === "cancel_flagged" ? "demo-flagged-intent" : "demo-safe-intent",
-      },
-      action,
-    );
+  async function queueFlagged() {
+    setVaultBusy(true);
+    try {
+      if (vault.walletConnected) {
+        const { intentId } = await vault.queueTransfer(
+          "0x000000000000000000000000000000000000dEaD",
+          0.002,
+          20,
+        );
+        setFlaggedIntentId(intentId);
+      }
+      setFlaggedQueued(true);
+    } finally {
+      setVaultBusy(false);
+    }
+  }
+
+  async function cancelFlagged() {
+    setVaultBusy(true);
+    try {
+      let txHash: string | undefined;
+      if (vault.walletConnected && flaggedIntentId) {
+        txHash = await vault.cancelIntent(flaggedIntentId);
+      }
+      await post(
+        "/api/guarded/confirm",
+        { action: "cancel_flagged", intentId: flaggedIntentId ?? "demo-flagged-intent", txHash },
+        "cancel_flagged",
+      );
+    } finally {
+      setVaultBusy(false);
+    }
+  }
+
+  async function queueSafe() {
+    setVaultBusy(true);
+    try {
+      if (vault.walletConnected) {
+        const { intentId } = await vault.queueTransfer(
+          "0x8ba1f109551bD432803012645Ac136ddd64DBA72",
+          0.001,
+          10,
+        );
+        setSafeIntentId(intentId);
+      }
+      setCountdown(8);
+      setSafeQueued(true);
+    } finally {
+      setVaultBusy(false);
+    }
+  }
+
+  async function executeSafe() {
+    setVaultBusy(true);
+    try {
+      let txHash: string | undefined;
+      if (vault.walletConnected && safeIntentId) {
+        txHash = await vault.executeIntent(safeIntentId);
+      }
+      await post(
+        "/api/guarded/confirm",
+        { action: "execute_safe", intentId: safeIntentId ?? "demo-safe-intent", txHash },
+        "execute_safe",
+      );
+    } finally {
+      setVaultBusy(false);
+    }
   }
 
   return (
     <PageShell>
+      {showAuth && (
+        <div className="mb-5 flex items-center justify-between rounded-xl border border-[#315efb]/20 bg-[#edf2ff] px-5 py-4">
+          <p className="text-sm text-[#315efb]">
+            Open your wallet extension (MetaMask, Ledger Live) and connect to this site to enable on-chain settlement.
+          </p>
+          <button onClick={hideAuthFlow} className="ml-4 shrink-0 text-xs text-[#315efb]/60 hover:text-[#315efb]">
+            Dismiss
+          </button>
+        </div>
+      )}
       <div className="mb-9 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
         <div>
           <p className="eyebrow text-[#667085]">Settlement controls</p>
@@ -82,9 +156,12 @@ export default function GuardedPage() {
             intent should settle or be canceled.
           </p>
         </div>
-        <div className="max-w-md rounded-xl border border-[#e3e8ef] bg-white p-5 text-sm leading-6 text-[#667085]">
-          Guarded Mainnet does not reverse finalized transactions. It delays
-          intent so risk can be inspected and canceled first.
+        <div className="flex flex-col items-end gap-3">
+          <WalletButton />
+          <div className="max-w-md rounded-xl border border-[#e3e8ef] bg-white p-5 text-sm leading-6 text-[#667085]">
+            Guarded Mainnet does not reverse finalized transactions. It delays
+            intent so risk can be inspected and canceled first.
+          </div>
         </div>
       </div>
 
@@ -120,7 +197,7 @@ export default function GuardedPage() {
           </div>
 
           {!flaggedQueued && !state.guarded.cancelledFlaggedIntent && (
-            <button onClick={() => setFlaggedQueued(true)} className="button-primary w-full">
+            <button onClick={() => void queueFlagged()} disabled={vaultBusy} className="button-primary w-full">
               <Clock3 size={16} /> Queue flagged intent
             </button>
           )}
@@ -131,8 +208,8 @@ export default function GuardedPage() {
                 <span className="font-mono text-sm text-[#ff927f]">00:15</span>
               </div>
               <button
-                onClick={() => void confirm("cancel_flagged")}
-                disabled={busy === "cancel_flagged"}
+                onClick={() => void cancelFlagged()}
+                disabled={busy === "cancel_flagged" || vaultBusy}
                 className="button-secondary w-full"
               >
                 <Ban size={16} /> Undo before settlement
@@ -188,10 +265,8 @@ export default function GuardedPage() {
 
           {!safeQueued && !state.guarded.executedSafeIntent && (
             <button
-              onClick={() => {
-                setCountdown(8);
-                setSafeQueued(true);
-              }}
+              onClick={() => void queueSafe()}
+              disabled={vaultBusy}
               className="button-primary w-full"
             >
               <Clock3 size={16} /> Queue safe intent
@@ -206,8 +281,8 @@ export default function GuardedPage() {
                 <span className="font-mono text-sm">00:0{countdown}</span>
               </div>
               <button
-                onClick={() => void confirm("execute_safe")}
-                disabled={countdown > 0 || busy === "execute_safe"}
+                onClick={() => void executeSafe()}
+                disabled={countdown > 0 || busy === "execute_safe" || vaultBusy}
                 className="button-primary w-full"
               >
                 Settle after delay <ArrowRight size={15} />
