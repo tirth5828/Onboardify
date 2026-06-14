@@ -48,7 +48,10 @@ function DynamicWalletBridge({ children }: { children: React.ReactNode }) {
 
   // Close auth panel automatically once a wallet connects.
   useEffect(() => {
-    if (primaryWallet) setShowAuth(false);
+    const timer = window.setTimeout(() => {
+      if (primaryWallet) setShowAuth(false);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [primaryWallet]);
 
   const value: WalletContextValue = {
