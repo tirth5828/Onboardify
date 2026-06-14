@@ -1,7 +1,9 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { DynamicProvider } from "@dynamic-labs-sdk/react-hooks";
 
+import { dynamicClient } from "@/lib/dynamic-client";
 import type { JourneyState, JourneySummary } from "@/lib/domain/types";
 
 interface JourneyPayload {
@@ -76,13 +78,19 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
     await post("/api/state/reset", {}, "reset");
   }, [post]);
 
-  return (
+  const content = (
     <JourneyContext.Provider
       value={{ ...payload, loading, busy, error, refresh, post, reset }}
     >
       {children}
     </JourneyContext.Provider>
   );
+
+  if (dynamicClient) {
+    return <DynamicProvider client={dynamicClient}>{content}</DynamicProvider>;
+  }
+
+  return content;
 }
 
 export function useJourney() {

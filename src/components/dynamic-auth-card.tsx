@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import {
-  createDynamicClient,
-  initializeClient,
   sendEmailOTP,
   verifyOTP,
   type OTPVerification,
@@ -12,32 +10,10 @@ import {
   createWaasWalletAccounts,
   getChainsMissingWaasWalletAccounts,
 } from "@dynamic-labs-sdk/client/waas";
-import { addEvmExtension } from "@dynamic-labs-sdk/evm";
-import {
-  DynamicProvider,
-  useEvent,
-  useUser,
-  useWalletAccounts,
-} from "@dynamic-labs-sdk/react-hooks";
+import { useEvent, useUser, useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
 import { ArrowRight, Check, Mail, Wallet } from "lucide-react";
 
-const environmentId = process.env.NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID;
-const dynamicClient = environmentId
-  ? createDynamicClient({
-      autoInitialize: false,
-      environmentId,
-      metadata: {
-        name: "Mainnet Ready",
-        universalLink:
-          process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-      },
-    })
-  : null;
-
-if (dynamicClient) {
-  addEvmExtension();
-  void initializeClient();
-}
+import { dynamicClient } from "@/lib/dynamic-client";
 
 function DynamicAuthInner() {
   const user = useUser().data;
@@ -161,9 +137,5 @@ export function DynamicAuthCard() {
     );
   }
 
-  return (
-    <DynamicProvider client={dynamicClient}>
-      <DynamicAuthInner />
-    </DynamicProvider>
-  );
+  return <DynamicAuthInner />;
 }
