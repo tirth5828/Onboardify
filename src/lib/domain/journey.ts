@@ -5,9 +5,7 @@ import type {
   GuardedAction,
   JourneyState,
   JourneySummary,
-  MarketsAction,
   MirrorAction,
-  PathwayId,
   RiskLevel,
   ScoreEventKey,
   TestnetOperation,
@@ -20,7 +18,6 @@ const SCORE_VALUES: Record<ScoreEventKey, number> = {
   "mirror.scam_recovery": 20,
   "guarded.cancelled": 10,
   "guarded.executed": 10,
-  "privacy.paid": 10,
 };
 
 const now = () => new Date().toISOString();
@@ -44,7 +41,6 @@ export function createJourney(userId: string): JourneyState {
   return {
     userId,
     walletAddress: null,
-    pathway: null,
     simulation: {
       ethBalance: 5,
       usdcBalance: 10_000,
@@ -85,13 +81,6 @@ export function createJourney(userId: string): JourneyState {
       transactions: [],
       findings: [],
     },
-    markets: {
-      completedActions: [],
-      brokerageValueUsd: 25_000,
-      onchainCashUsd: 0,
-      allocations: [],
-      activity: [],
-    },
     guarded: {
       cancelledFlaggedIntent: false,
       executedSafeIntent: false,
@@ -99,26 +88,6 @@ export function createJourney(userId: string): JourneyState {
       safeIntentId: null,
       cancelTxHash: null,
       executeTxHash: null,
-    },
-    privacy: {
-      status: "locked",
-      unlinkAddress: null,
-      payerAddress: null,
-      fundingTxHash: null,
-      paymentTxHash: null,
-      resourceUrl: null,
-      error: null,
-    },
-    world: {
-      verified: false,
-      nullifierHash: null,
-      verifiedAt: null,
-    },
-    passport: {
-      claimed: false,
-      tokenId: null,
-      txHash: null,
-      claimedAt: null,
     },
     scoreEvents: [],
     createdAt,
@@ -131,7 +100,6 @@ export function normalizeJourney(current: JourneyState): JourneyState {
   return {
     ...defaults,
     ...current,
-    pathway: current.pathway ?? null,
     simulation: { ...defaults.simulation, ...current.simulation },
     testnet: {
       ...defaults.testnet,
@@ -142,13 +110,6 @@ export function normalizeJourney(current: JourneyState): JourneyState {
       },
       transactions: current.testnet?.transactions ?? [],
       findings: current.testnet?.findings ?? [],
-    },
-    markets: {
-      ...defaults.markets,
-      ...(current.markets ?? {}),
-      completedActions: current.markets?.completedActions ?? [],
-      allocations: current.markets?.allocations ?? [],
-      activity: current.markets?.activity ?? [],
     },
   };
 }
@@ -309,74 +270,6 @@ export function applyGuardedAction(
     award(state, "guarded.executed");
   }
 
-  if (
-    state.guarded.cancelledFlaggedIntent &&
-    state.guarded.executedSafeIntent &&
-    state.privacy.status === "locked"
-  ) {
-    state.privacy.status = "ready";
-  }
-
-  return touch(state);
-}
-
-export function completePrivacy(
-  current: JourneyState,
-  payload: {
-    unlinkAddress: string;
-    payerAddress: string;
-    fundingTxHash: string;
-    paymentTxHash: string;
-    resourceUrl: string;
-  },
-): JourneyState {
-  const state = structuredClone(current);
-  if (
-    !state.guarded.cancelledFlaggedIntent ||
-    !state.guarded.executedSafeIntent
-  ) {
-    throw new Error("Complete both guarded intents before private settlement.");
-  }
-  state.privacy = {
-    status: "complete",
-    ...payload,
-    error: null,
-  };
-  award(state, "privacy.paid");
-  return touch(state);
-}
-
-export function markWorldVerified(
-  current: JourneyState,
-  nullifier: string,
-): JourneyState {
-  const state = structuredClone(current);
-  if (!summarizeJourney(state).passportEligible) {
-    throw new Error("A score of 80 and all required stages are required.");
-  }
-  state.world = {
-    verified: true,
-    nullifierHash: createHash("sha256").update(nullifier).digest("hex"),
-    verifiedAt: now(),
-  };
-  return touch(state);
-}
-
-export function markPassportClaimed(
-  current: JourneyState,
-  payload: { tokenId: string; txHash: string },
-): JourneyState {
-  const state = structuredClone(current);
-  if (!state.world.verified || !state.world.nullifierHash) {
-    throw new Error("World ID verification is required.");
-  }
-  if (state.passport.claimed) return state;
-  state.passport = {
-    claimed: true,
-    tokenId: payload.tokenId,
-    txHash: payload.txHash,
-    claimedAt: now(),
-  };
   return touch(state);
 }
 
@@ -386,15 +279,6 @@ export function setWalletAddress(
 ): JourneyState {
   const state = structuredClone(current);
   state.walletAddress = walletAddress;
-  return touch(state);
-}
-
-export function selectPathway(
-  current: JourneyState,
-  pathway: PathwayId,
-): JourneyState {
-  const state = normalizeJourney(structuredClone(current));
-  state.pathway = pathway;
   return touch(state);
 }
 
@@ -619,100 +503,6 @@ export function applyTestnetOperation(
   return touch(state);
 }
 
-export function applyMarketsAction(
-  current: JourneyState,
-  input: {
-    action: MarketsAction;
-    instrument?: "USDC" | "TBILL" | "ETH" | "WSTETH" | "DEX_LP";
-    amountUsd?: number;
-  },
-): JourneyState {
-  const state = normalizeJourney(structuredClone(current));
-  const markets = state.markets;
-  const complete = () => {
-    if (!markets.completedActions.includes(input.action)) {
-      markets.completedActions.push(input.action);
-    }
-  };
-  const record = (title: string, detail: string, level: RiskLevel = "low") =>
-    markets.activity.unshift({
-      id: randomUUID(),
-      title,
-      detail,
-      level,
-      createdAt: now(),
-    });
-
-  if (input.action === "acknowledge_custody") {
-    complete();
-    record(
-      "Custody model mapped",
-      "Broker-held securities were compared with self-custodied bearer assets.",
-    );
-  }
-  if (input.action === "compare_settlement") {
-    complete();
-    record(
-      "Settlement model compared",
-      "T+1 brokerage settlement was contrasted with block confirmation and finality.",
-    );
-  }
-  if (input.action === "fund_account") {
-    const amount = Math.min(
-      Math.max(input.amountUsd ?? 5_000, 0),
-      markets.brokerageValueUsd,
-    );
-    markets.brokerageValueUsd = round(markets.brokerageValueUsd - amount);
-    markets.onchainCashUsd = round(markets.onchainCashUsd + amount);
-    complete();
-    record(
-      "Testnet account funded",
-      `$${amount.toLocaleString()} moved into monitored onchain cash.`,
-    );
-  }
-  if (input.action === "allocate" && input.instrument) {
-    const amount = Math.min(
-      Math.max(input.amountUsd ?? 0, 0),
-      markets.onchainCashUsd,
-    );
-    if (amount <= 0) throw new Error("Enter an amount within available onchain cash.");
-    markets.onchainCashUsd = round(markets.onchainCashUsd - amount);
-    upsertAllocation(markets.allocations, input.instrument, amount);
-    complete();
-    const concentration =
-      amount /
-      Math.max(
-        1,
-        markets.onchainCashUsd +
-          markets.allocations.reduce((total, item) => total + item.valueUsd, 0),
-      );
-    record(
-      `${input.instrument} allocation executed`,
-      `$${amount.toLocaleString()} allocated with onchain settlement.`,
-      concentration > 0.4 || ["ETH", "WSTETH", "DEX_LP"].includes(input.instrument)
-        ? "high"
-        : "low",
-    );
-  }
-  if (input.action === "exit_position" && input.instrument) {
-    const allocation = markets.allocations.find(
-      (item) => item.instrument === input.instrument,
-    );
-    if (!allocation) throw new Error("No open allocation exists for this instrument.");
-    const amount = Math.min(input.amountUsd ?? allocation.valueUsd, allocation.valueUsd);
-    allocation.valueUsd = round(allocation.valueUsd - amount);
-    markets.onchainCashUsd = round(markets.onchainCashUsd + amount);
-    markets.allocations = markets.allocations.filter((item) => item.valueUsd > 0);
-    complete();
-    record(
-      `${input.instrument} position reduced`,
-      `$${amount.toLocaleString()} returned to onchain cash.`,
-    );
-  }
-
-  return touch(state);
-}
-
 export function summarizeJourney(state: JourneyState): JourneySummary {
   const points = (prefix?: string) =>
     state.scoreEvents
@@ -721,7 +511,6 @@ export function summarizeJourney(state: JourneyState): JourneySummary {
 
   const mirrorScore = points("mirror.");
   const guardedScore = points("guarded.");
-  const privacyScore = points("privacy.");
   const score = points();
   const requiredMirror = [
     "safe_send",
@@ -735,11 +524,6 @@ export function summarizeJourney(state: JourneyState): JourneySummary {
     state.simulation.completedActions.includes(action),
   );
   const guardedUnlocked = mirrorComplete && mirrorScore >= 55;
-  const passportEligible =
-    score >= 80 &&
-    state.guarded.cancelledFlaggedIntent &&
-    state.guarded.executedSafeIntent &&
-    state.privacy.status === "complete";
 
   const skills = [
     state.scoreEvents.some((event) => event.key === "mirror.safe_send")
@@ -755,19 +539,15 @@ export function summarizeJourney(state: JourneyState): JourneySummary {
       ? "Scam Resistant"
       : null,
     guardedScore === 20 ? "Guarded Mainnet" : null,
-    privacyScore === 10 ? "Private Payment Ready" : null,
   ].filter((skill): skill is string => Boolean(skill));
 
   return {
     score,
     mirrorScore,
     guardedScore,
-    privacyScore,
     mirrorComplete,
     guardedUnlocked,
-    passportEligible,
     skills,
-    marketsProgress: Math.min(100, state.markets.completedActions.length * 20),
     monitoredOperations: state.testnet.transactions.length,
     unresolvedFindings: state.testnet.findings.filter((finding) => !finding.resolved)
       .length,
@@ -810,17 +590,4 @@ function protocolFor(operation: TestnetOperation) {
     stake: "Lido",
     bridge: "Arc Gateway",
   }[operation];
-}
-
-function upsertAllocation(
-  allocations: JourneyState["markets"]["allocations"],
-  instrument: JourneyState["markets"]["allocations"][number]["instrument"],
-  amount: number,
-) {
-  const existing = allocations.find((item) => item.instrument === instrument);
-  if (existing) {
-    existing.valueUsd = round(existing.valueUsd + amount);
-  } else {
-    allocations.push({ instrument, valueUsd: round(amount) });
-  }
 }
