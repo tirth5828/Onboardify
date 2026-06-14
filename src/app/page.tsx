@@ -1,17 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import {
-  ArrowRight,
-  BarChart3,
-  Blocks,
-  Eye,
-  Radar,
-  ShieldCheck,
-} from "lucide-react";
-import { useRouter } from "next/navigation";
+import { ArrowRight, Blocks, Eye, Radar } from "lucide-react";
 
-import { useJourney } from "@/components/app-providers";
 import { DynamicAuthCard } from "@/components/dynamic-auth-card";
 import { PageShell } from "@/components/page-shell";
 
@@ -23,14 +14,6 @@ const monitorRows = [
 ];
 
 export default function Home() {
-  const { post, busy } = useJourney();
-  const router = useRouter();
-
-  async function choose(pathway: "onchain" | "markets", destination: string) {
-    await post("/api/pathway/select", { pathway }, `pathway-${pathway}`);
-    router.push(destination);
-  }
-
   return (
     <PageShell>
       <section className="grid gap-10 border-b border-[#e3e8ef] py-10 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:py-16">
@@ -101,12 +84,12 @@ export default function Home() {
 
       <section className="py-10">
         <div className="mb-6 max-w-2xl">
-          <p className="eyebrow text-[#667085]">Choose an entry model</p>
+          <p className="eyebrow text-[#667085]">Start here</p>
           <h2 className="mt-2 text-3xl font-semibold tracking-[-0.035em]">
-            Start from the mental model you already have.
+            Wallet to protocol, fully monitored.
           </h2>
         </div>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
           <article className="surface rounded-xl p-6">
             <div className="mb-8 flex items-start justify-between">
               <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#edf2ff] text-[#315efb]">
@@ -125,46 +108,15 @@ export default function Home() {
               <span className="flex items-center gap-2 text-xs font-semibold text-[#667085]">
                 <Eye size={14} /> Continuous behavior monitoring
               </span>
-              <button
-                onClick={() => void choose("onchain", "/explore")}
-                disabled={busy === "pathway-onchain"}
-                className="button-secondary"
-              >
-                Select path
-              </button>
+              <Link href="/explore" className="button-secondary">
+                Open testnet desk
+              </Link>
             </div>
           </article>
 
-          <article className="surface rounded-xl p-6">
-            <div className="mb-8 flex items-start justify-between">
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#eaf8f2] text-[#087a55]">
-                <BarChart3 size={20} />
-              </span>
-              <span className="rounded bg-[#eaf8f2] px-2 py-1 text-[10px] font-bold text-[#087a55]">
-                NEW
-              </span>
-            </div>
-            <h3 className="text-xl font-bold">Stock market to crypto</h3>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-[#667085]">
-              Translate brokerage concepts into wallets, block settlement,
-              tokenized treasuries, DEX execution, staking, and DeFi risk.
-            </p>
-            <div className="mt-6 flex items-center justify-between border-t border-[#e3e8ef] pt-5">
-              <span className="flex items-center gap-2 text-xs font-semibold text-[#667085]">
-                <ShieldCheck size={14} /> Portfolio-aware risk guidance
-              </span>
-              <button
-                onClick={() => void choose("markets", "/markets")}
-                disabled={busy === "pathway-markets"}
-                className="button-primary"
-              >
-                Select path
-              </button>
-            </div>
-          </article>
-        </div>
-        <div className="mt-5 max-w-md">
-          <DynamicAuthCard />
+          <div className="surface rounded-xl p-6">
+            <DynamicAuthCard />
+          </div>
         </div>
       </section>
     </PageShell>
