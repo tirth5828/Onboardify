@@ -5,14 +5,14 @@ import {
   AlertTriangle,
   ArrowRight,
   Check,
-  Eye,
   FlaskConical,
-  RotateCcw,
+  ShieldCheck,
 } from "lucide-react";
 
 import { useJourney } from "@/components/app-providers";
 import { LoadingScreen } from "@/components/loading-screen";
 import { PageShell } from "@/components/page-shell";
+import { ScoreRing } from "@/components/score-ring";
 import type { MirrorAction } from "@/lib/domain/types";
 
 const demoWallet = "0x4D61696e6e657452656164790000000000000000";
@@ -76,22 +76,25 @@ export default function MirrorPage() {
             Guided risk lab
           </h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-[#667085]">
-            Use these short drills to establish a baseline, or move directly to
-            the open testnet desk. Both surfaces feed the same behavioral record.
+            Six controlled drills establish minimum transaction literacy. Skip
+            directly to the testnet desk at any time — both surfaces feed the
+            same behavioral record.
           </p>
         </div>
-        <Link href="/explore" className="button-primary">
-          Skip to independent testnet use <ArrowRight size={15} />
-        </Link>
+        <div className="flex items-center gap-5">
+          <ScoreRing score={summary.mirrorScore} max={70} size={84} />
+          <Link href="/explore" className="button-secondary">
+            Skip to testnet desk <ArrowRight size={15} />
+          </Link>
+        </div>
       </div>
 
-      <section className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <section className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
           ["mETH", simulation.ethBalance.toFixed(3)],
           ["mUSDC", simulation.usdcBalance.toLocaleString()],
           ["Portfolio", `$${simulation.portfolioUsd.toLocaleString()}`],
           ["Gas spent", `${simulation.gasSpentEth.toFixed(3)} ETH`],
-          ["Evidence score", `${summary.mirrorScore}/70`],
         ].map(([label, value]) => (
           <div key={label} className="metric">
             <p className="text-xs font-semibold text-[#667085]">{label}</p>
@@ -192,36 +195,77 @@ export default function MirrorPage() {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-2">
-            {!simulation.maliciousApprovalAccepted && (
-              <button
-                onClick={() => void act("accept_malicious_approval")}
-                disabled={busy === "accept_malicious_approval"}
-                className="button-danger w-full"
+          <div className="mt-4 space-y-2">
+            {(
+              [
+                {
+                  num: "01",
+                  label: "Sign unverified approval",
+                  done: simulation.maliciousApprovalAccepted,
+                  active: !simulation.maliciousApprovalAccepted,
+                  action: "accept_malicious_approval" as MirrorAction,
+                  btnLabel: "Sign",
+                  btnClass: "button-danger",
+                },
+                {
+                  num: "02",
+                  label: "Inspect persistent authority",
+                  done: simulation.maliciousApprovalInspected,
+                  active:
+                    simulation.maliciousApprovalAccepted &&
+                    !simulation.maliciousApprovalInspected,
+                  action: "inspect_malicious_approval" as MirrorAction,
+                  btnLabel: "Inspect",
+                  btnClass: "button-secondary",
+                },
+                {
+                  num: "03",
+                  label: "Revoke allowance · +20 pts",
+                  done: simulation.maliciousApprovalRevoked,
+                  active:
+                    simulation.maliciousApprovalInspected &&
+                    !simulation.maliciousApprovalRevoked,
+                  action: "revoke_malicious_approval" as MirrorAction,
+                  btnLabel: "Revoke",
+                  btnClass: "button-primary",
+                },
+              ] as Array<{
+                num: string;
+                label: string;
+                done: boolean;
+                active: boolean;
+                action: MirrorAction;
+                btnLabel: string;
+                btnClass: string;
+              }>
+            ).map((step) => (
+              <div
+                key={step.num}
+                className={`flex items-center gap-3 rounded-lg px-4 py-3 ${
+                  step.done
+                    ? "bg-[#eaf8f2]"
+                    : step.active
+                      ? "border border-[#e3e8ef] bg-white"
+                      : "bg-[#f8fafc] opacity-40"
+                }`}
               >
-                Sign unverified unlimited approval
-              </button>
-            )}
-            {simulation.maliciousApprovalAccepted &&
-              !simulation.maliciousApprovalInspected && (
-                <button
-                  onClick={() => void act("inspect_malicious_approval")}
-                  disabled={busy === "inspect_malicious_approval"}
-                  className="button-secondary w-full"
-                >
-                  <Eye size={14} /> Inspect persistent authority
-                </button>
-              )}
-            {simulation.maliciousApprovalInspected &&
-              !simulation.maliciousApprovalRevoked && (
-                <button
-                  onClick={() => void act("revoke_malicious_approval")}
-                  disabled={busy === "revoke_malicious_approval"}
-                  className="button-primary w-full"
-                >
-                  <RotateCcw size={14} /> Revoke allowance
-                </button>
-              )}
+                <span className="w-6 font-mono text-xs text-[#98a2b3]">
+                  {step.num}
+                </span>
+                <span className="flex-1 text-xs font-semibold">{step.label}</span>
+                {step.done ? (
+                  <Check size={14} className="text-[#087a55]" />
+                ) : step.active ? (
+                  <button
+                    onClick={() => void act(step.action)}
+                    disabled={busy === step.action}
+                    className={`${step.btnClass} !min-h-0 !py-1.5 !text-xs`}
+                  >
+                    {step.btnLabel}
+                  </button>
+                ) : null}
+              </div>
+            ))}
           </div>
         </section>
       </div>
@@ -258,6 +302,25 @@ export default function MirrorPage() {
           ))}
         </div>
       </section>
+
+      {summary.mirrorComplete && (
+        <div className="mt-5 flex flex-col gap-4 rounded-xl border border-[#cbe8dc] bg-[#eaf8f2] p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#087a55] text-white">
+              <ShieldCheck size={20} />
+            </span>
+            <div>
+              <p className="font-bold text-[#054f38]">Guarded Mainnet Unlocked</p>
+              <p className="mt-1 text-sm text-[#087a55]/70">
+                All mirror drills complete · {summary.mirrorScore}/70 pts · Two guarded intents await
+              </p>
+            </div>
+          </div>
+          <Link href="/guarded" className="button-primary shrink-0">
+            Open settlement desk <ArrowRight size={15} />
+          </Link>
+        </div>
+      )}
     </PageShell>
   );
 }
