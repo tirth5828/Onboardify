@@ -65,6 +65,19 @@ describe("journey state machine", () => {
     expect(state.guarded.executedSafeIntent).toBe(true);
   });
 
+  it("requires all six mirror actions for mirrorComplete", () => {
+    let state = createJourney("u");
+    state = applyMirrorAction(state, "safe_send");
+    state = applyMirrorAction(state, "safe_swap");
+    state = applyMirrorAction(state, "safe_loan");
+    state = applyMirrorAction(state, "accept_malicious_approval");
+    state = applyMirrorAction(state, "inspect_malicious_approval");
+    const summary = summarizeJourney(state);
+    expect(summary.mirrorComplete).toBe(false);
+    expect(summary.guardedUnlocked).toBe(false);
+    expect(summary.mirrorScore).toBe(50);
+  });
+
   it("executes risky sandbox operations while recording monitor findings", () => {
     const state = applyTestnetOperation(createJourney("u"), {
       operation: "swap",
