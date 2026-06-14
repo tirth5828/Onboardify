@@ -24,14 +24,19 @@ interface JourneyContextValue extends Partial<JourneyPayload> {
 export interface WalletContextValue {
   primaryWallet: unknown | null;
   walletAddress: string | null;
+  /** Whether the auth/connect modal is open. */
+  showAuth: boolean;
   showAuthFlow: () => void;
+  hideAuthFlow: () => void;
   logout: () => void;
 }
 
 export const WalletContext = createContext<WalletContextValue>({
   primaryWallet: null,
   walletAddress: null,
+  showAuth: false,
   showAuthFlow: () => {},
+  hideAuthFlow: () => {},
   logout: () => {},
 });
 
@@ -39,10 +44,19 @@ function DynamicWalletBridge({ children }: { children: React.ReactNode }) {
   const { data: walletAccounts } = useWalletAccounts();
   const { mutate: logoutMutate } = useLogout();
   const primaryWallet = walletAccounts?.[0] ?? null;
+  const [showAuth, setShowAuth] = useState(false);
+
+  // Close auth panel automatically once a wallet connects.
+  useEffect(() => {
+    if (primaryWallet) setShowAuth(false);
+  }, [primaryWallet]);
+
   const value: WalletContextValue = {
     primaryWallet,
     walletAddress: primaryWallet?.address ?? null,
-    showAuthFlow: () => {},
+    showAuth,
+    showAuthFlow: () => setShowAuth(true),
+    hideAuthFlow: () => setShowAuth(false),
     logout: () => logoutMutate(),
   };
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
@@ -123,7 +137,14 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
 
   return (
     <WalletContext.Provider
-      value={{ primaryWallet: null, walletAddress: null, showAuthFlow: () => {}, logout: () => {} }}
+      value={{
+        primaryWallet: null,
+        walletAddress: null,
+        showAuth: false,
+        showAuthFlow: () => {},
+        hideAuthFlow: () => {},
+        logout: () => {},
+      }}
     >
       {content}
     </WalletContext.Provider>
