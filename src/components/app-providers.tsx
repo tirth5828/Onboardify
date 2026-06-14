@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { DynamicProvider } from "@dynamic-labs-sdk/react-hooks";
+import { DynamicProvider, useLogout, useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
 
 import { dynamicClient } from "@/lib/dynamic-client";
 import type { JourneyState, JourneySummary } from "@/lib/domain/types";
@@ -19,6 +19,33 @@ interface JourneyContextValue extends Partial<JourneyPayload> {
   refresh: () => Promise<void>;
   post: (path: string, body?: unknown, busyKey?: string) => Promise<JourneyPayload>;
   reset: () => Promise<void>;
+}
+
+export interface WalletContextValue {
+  primaryWallet: unknown | null;
+  walletAddress: string | null;
+  showAuthFlow: () => void;
+  logout: () => void;
+}
+
+export const WalletContext = createContext<WalletContextValue>({
+  primaryWallet: null,
+  walletAddress: null,
+  showAuthFlow: () => {},
+  logout: () => {},
+});
+
+function DynamicWalletBridge({ children }: { children: React.ReactNode }) {
+  const { data: walletAccounts } = useWalletAccounts();
+  const { mutate: logoutMutate } = useLogout();
+  const primaryWallet = walletAccounts?.[0] ?? null;
+  const value: WalletContextValue = {
+    primaryWallet,
+    walletAddress: primaryWallet?.address ?? null,
+    showAuthFlow: () => {},
+    logout: () => logoutMutate(),
+  };
+  return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }
 
 const JourneyContext = createContext<JourneyContextValue | null>(null);
@@ -87,10 +114,20 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   );
 
   if (dynamicClient) {
-    return <DynamicProvider client={dynamicClient}>{content}</DynamicProvider>;
+    return (
+      <DynamicProvider client={dynamicClient}>
+        <DynamicWalletBridge>{content}</DynamicWalletBridge>
+      </DynamicProvider>
+    );
   }
 
-  return content;
+  return (
+    <WalletContext.Provider
+      value={{ primaryWallet: null, walletAddress: null, showAuthFlow: () => {}, logout: () => {} }}
+    >
+      {content}
+    </WalletContext.Provider>
+  );
 }
 
 export function useJourney() {
