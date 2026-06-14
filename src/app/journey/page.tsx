@@ -160,6 +160,19 @@ export default function JourneyPage() {
       <section className="mt-5 grid gap-5 lg:grid-cols-[.75fr_1.25fr]">
         <div className="surface rounded-xl p-5">
           <p className="text-sm font-bold">Competency evidence</p>
+          {summary.skills.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {summary.skills.map((skill) => (
+                <span
+                  key={skill}
+                  className="flex items-center gap-1 rounded-full bg-[#edf2ff] px-2.5 py-1 text-[10px] font-bold text-[#315efb]"
+                >
+                  <CheckCircle2 size={10} />
+                  {skill}
+                </span>
+              ))}
+            </div>
+          )}
           <div className="mt-4 space-y-3">
             {[
               ["Transaction review", summary.mirrorScore >= 15],
