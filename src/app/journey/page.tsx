@@ -4,9 +4,7 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowRight,
-  BarChart3,
   CheckCircle2,
-  ExternalLink,
   Radar,
   ShieldCheck,
 } from "lucide-react";
@@ -40,21 +38,17 @@ export default function JourneyPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href="/markets" className="button-secondary">
-            <BarChart3 size={15} /> Markets pathway
-          </Link>
           <Link href="/explore" className="button-primary">
             Open testnet desk <ArrowRight size={15} />
           </Link>
         </div>
       </div>
 
-      <section className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {[
           ["Readiness", `${summary.score}/100`, "Behavioral score"],
           ["Observed operations", summary.monitoredOperations, "Across both testnets"],
           ["Open risk findings", summary.unresolvedFindings, "Requires review"],
-          ["Markets bridge", `${summary.marketsProgress}%`, "Alternative pathway"],
         ].map(([label, value, note]) => (
           <div key={label} className="metric">
             <p className="text-xs font-semibold text-[#667085]">{label}</p>
@@ -173,7 +167,6 @@ export default function JourneyPage() {
               ["Collateral risk", summary.mirrorScore >= 50],
               ["Approval recovery", summary.mirrorScore >= 70],
               ["Delayed settlement", summary.guardedScore === 20],
-              ["Private payment", summary.privacyScore === 10],
             ].map(([label, complete]) => (
               <div key={String(label)} className="flex items-center justify-between text-xs">
                 <span className="text-[#667085]">{label}</span>
@@ -210,14 +203,6 @@ export default function JourneyPage() {
               </div>
             ))}
           </div>
-          {state.passport.txHash && (
-            <a
-              href="#"
-              className="mt-4 flex items-center justify-end gap-2 text-xs font-bold text-[#315efb]"
-            >
-              Credential transaction <ExternalLink size={13} />
-            </a>
-          )}
         </div>
       </section>
     </PageShell>
