@@ -2,12 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyGuardedAction,
-  applyMarketsAction,
   applyMirrorAction,
   applyTestnetOperation,
-  completePrivacy,
   createJourney,
-  markWorldVerified,
   summarizeJourney,
 } from "./journey";
 
@@ -56,22 +53,16 @@ describe("journey state machine", () => {
     });
   });
 
-  it("reaches passport eligibility after both guarded outcomes and privacy", () => {
+  it("reaches full readiness after both guarded outcomes", () => {
     let state = completeMirror();
     state = applyGuardedAction(state, "cancel_flagged");
     state = applyGuardedAction(state, "execute_safe");
-    state = completePrivacy(state, {
-      unlinkAddress: "unlink1demo",
-      payerAddress: "0x0000000000000000000000000000000000000001",
-      fundingTxHash: "0xfunding",
-      paymentTxHash: "0xpayment",
-      resourceUrl: "/risk-report",
-    });
     expect(summarizeJourney(state)).toMatchObject({
-      score: 100,
-      passportEligible: true,
+      score: 90,
+      guardedScore: 20,
     });
-    expect(markWorldVerified(state, "nullifier").world.verified).toBe(true);
+    expect(state.guarded.cancelledFlaggedIntent).toBe(true);
+    expect(state.guarded.executedSafeIntent).toBe(true);
   });
 
   it("executes risky sandbox operations while recording monitor findings", () => {
@@ -139,27 +130,5 @@ describe("journey state machine", () => {
     expect(state.simulation.recoveredLossUsd).toBe(4_200);
     expect(state.testnet.findings.every((finding) => finding.resolved)).toBe(true);
     expect(summarizeJourney(state).mirrorScore).toBe(20);
-  });
-
-  it("moves capital through the markets pathway without losing accounting value", () => {
-    let state = createJourney("u");
-    state = applyMarketsAction(state, { action: "acknowledge_custody" });
-    state = applyMarketsAction(state, { action: "compare_settlement" });
-    state = applyMarketsAction(state, {
-      action: "fund_account",
-      amountUsd: 5_000,
-    });
-    state = applyMarketsAction(state, {
-      action: "allocate",
-      instrument: "TBILL",
-      amountUsd: 2_000,
-    });
-
-    expect(state.markets.brokerageValueUsd).toBe(20_000);
-    expect(state.markets.onchainCashUsd).toBe(3_000);
-    expect(state.markets.allocations).toEqual([
-      { instrument: "TBILL", valueUsd: 2_000 },
-    ]);
-    expect(summarizeJourney(state).marketsProgress).toBe(80);
   });
 });
