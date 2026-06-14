@@ -71,8 +71,11 @@ export function useVault(): VaultHook {
       })) as `0x${string}`;
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
       // IntentQueued event: topics[0]=sig, topics[1]=intentId (indexed bytes32)
-      const intentId = (receipt.logs[0]?.topics[1] ?? "0x00") as `0x${string}`;
-      return { txHash, intentId };
+      const intentIdRaw = receipt.logs[0]?.topics[1];
+      if (!intentIdRaw) {
+        throw new Error("IntentQueued event not found in receipt — unexpected contract state.");
+      }
+      return { txHash, intentId: intentIdRaw as `0x${string}` };
     },
     [primaryWallet],
   );

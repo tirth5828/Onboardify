@@ -33,6 +33,7 @@ export default function GuardedPage() {
   const [flaggedIntentId, setFlaggedIntentId] = useState<`0x${string}` | null>(null);
   const [safeIntentId, setSafeIntentId] = useState<`0x${string}` | null>(null);
   const [vaultBusy, setVaultBusy] = useState(false);
+  const [vaultError, setVaultError] = useState<string | null>(null);
   const vault = useVault();
   const { showAuth, hideAuthFlow } = useContext(WalletContext);
 
@@ -66,6 +67,7 @@ export default function GuardedPage() {
 
   async function queueFlagged() {
     setVaultBusy(true);
+    setVaultError(null);
     try {
       if (vault.walletConnected) {
         const { intentId } = await vault.queueTransfer(
@@ -76,6 +78,8 @@ export default function GuardedPage() {
         setFlaggedIntentId(intentId);
       }
       setFlaggedQueued(true);
+    } catch (err) {
+      setVaultError(err instanceof Error ? err.message : "Transaction failed. Please try again.");
     } finally {
       setVaultBusy(false);
     }
@@ -83,6 +87,7 @@ export default function GuardedPage() {
 
   async function cancelFlagged() {
     setVaultBusy(true);
+    setVaultError(null);
     try {
       let txHash: string | undefined;
       if (vault.walletConnected && flaggedIntentId) {
@@ -93,6 +98,8 @@ export default function GuardedPage() {
         { action: "cancel_flagged", intentId: flaggedIntentId ?? "demo-flagged-intent", txHash },
         "cancel_flagged",
       );
+    } catch (err) {
+      setVaultError(err instanceof Error ? err.message : "Transaction failed. Please try again.");
     } finally {
       setVaultBusy(false);
     }
@@ -100,6 +107,7 @@ export default function GuardedPage() {
 
   async function queueSafe() {
     setVaultBusy(true);
+    setVaultError(null);
     try {
       if (vault.walletConnected) {
         const { intentId } = await vault.queueTransfer(
@@ -111,6 +119,8 @@ export default function GuardedPage() {
       }
       setCountdown(8);
       setSafeQueued(true);
+    } catch (err) {
+      setVaultError(err instanceof Error ? err.message : "Transaction failed. Please try again.");
     } finally {
       setVaultBusy(false);
     }
@@ -118,6 +128,7 @@ export default function GuardedPage() {
 
   async function executeSafe() {
     setVaultBusy(true);
+    setVaultError(null);
     try {
       let txHash: string | undefined;
       if (vault.walletConnected && safeIntentId) {
@@ -128,6 +139,8 @@ export default function GuardedPage() {
         { action: "execute_safe", intentId: safeIntentId ?? "demo-safe-intent", txHash },
         "execute_safe",
       );
+    } catch (err) {
+      setVaultError(err instanceof Error ? err.message : "Transaction failed. Please try again.");
     } finally {
       setVaultBusy(false);
     }
@@ -141,6 +154,17 @@ export default function GuardedPage() {
             Open your wallet extension (MetaMask, Ledger Live) and connect to this site to enable on-chain settlement.
           </p>
           <button onClick={hideAuthFlow} className="ml-4 shrink-0 text-xs text-[#315efb]/60 hover:text-[#315efb]">
+            Dismiss
+          </button>
+        </div>
+      )}
+      {vaultError && (
+        <div className="mb-5 flex items-center justify-between rounded-xl border border-[#f0b8b8] bg-[#fff0f0] px-5 py-4">
+          <p className="text-sm text-[#c33838]">{vaultError}</p>
+          <button
+            onClick={() => setVaultError(null)}
+            className="ml-4 shrink-0 text-xs text-[#c33838]/60 hover:text-[#c33838]"
+          >
             Dismiss
           </button>
         </div>
