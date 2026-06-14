@@ -10,9 +10,7 @@ const links = [
   { href: "/journey", label: "Overview" },
   { href: "/mirror", label: "Guided Lab" },
   { href: "/explore", label: "Testnet Desk" },
-  { href: "/markets", label: "Markets Bridge" },
   { href: "/guarded", label: "Settlement" },
-  { href: "/passport", label: "Credential" },
 ];
 
 export function SiteHeader() {
