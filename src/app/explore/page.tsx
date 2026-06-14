@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -16,6 +16,12 @@ import { useJourney } from "@/components/app-providers";
 import { LoadingScreen } from "@/components/loading-screen";
 import { PageShell } from "@/components/page-shell";
 import type { RiskLevel, TestnetOperation } from "@/lib/domain/types";
+import { RouteCard } from "@/components/route-card";
+import {
+  ARC_TESTNET_CHAIN_ID,
+  BASE_SEPOLIA_CHAIN_ID,
+  type LifiQuoteResult,
+} from "@/lib/lifi";
 import { arcExplorer, baseSepoliaExplorer } from "@/lib/networks";
 
 const operations: Array<{
@@ -101,6 +107,43 @@ export default function ExplorePage() {
   const [healthFactor, setHealthFactor] = useState(1.85);
   const [unlimited, setUnlimited] = useState(false);
   const [trusted, setTrusted] = useState(true);
+  const [riskFilter, setRiskFilter] = useState<RiskLevel | "all">("all");
+  const [route, setRoute] = useState<LifiQuoteResult | null>(null);
+  const [routeLoading, setRouteLoading] = useState(false);
+
+  useEffect(() => {
+    if (!["swap", "bridge"].includes(operation)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRoute(null);
+      return;
+    }
+    setRouteLoading(true);
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      fetch("/api/routes/quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fromChain: BASE_SEPOLIA_CHAIN_ID,
+          toChain:
+            operation === "bridge" ? ARC_TESTNET_CHAIN_ID : BASE_SEPOLIA_CHAIN_ID,
+          fromToken: asset,
+          toToken: operation === "swap" ? targetAsset : asset,
+          fromAmountUnits: String(amount),
+        }),
+        signal: controller.signal,
+      })
+        .then((r) => r.json() as Promise<LifiQuoteResult>)
+        .then(setRoute)
+        .catch(() => {})
+        .finally(() => setRouteLoading(false));
+    }, 400);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+      setRouteLoading(false);
+    };
+  }, [operation, asset, targetAsset, amount]);
 
   const risk = useMemo(
     () =>
@@ -120,6 +163,10 @@ export default function ExplorePage() {
 
   const currentOperation = operations.find((item) => item.value === operation)!;
   const findings = state.testnet.findings.filter((finding) => !finding.resolved);
+  const visibleTransactions =
+    riskFilter === "all"
+      ? state.testnet.transactions
+      : state.testnet.transactions.filter((tx) => tx.risk === riskFilter);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -324,6 +371,32 @@ export default function ExplorePage() {
             </label>
           )}
 
+          {(operation === "swap" || operation === "bridge") && (
+            <div className="mt-4">
+              {routeLoading && (
+                <div className="animate-pulse rounded-lg border border-[#e3e8ef] bg-[#f8fafc] p-4 text-center text-xs text-[#667085]">
+                  Resolving route…
+                </div>
+              )}
+              {!routeLoading && route && (
+                <RouteCard
+                  fromChain={
+                    network === "base-sepolia" ? "Base Sepolia" : "Arc Testnet"
+                  }
+                  fromToken={asset}
+                  fromAmount={amount}
+                  toChain={operation === "bridge" ? "Arc Testnet" : "Base Sepolia"}
+                  toToken={operation === "swap" ? targetAsset : asset}
+                  estimatedOutput={route.estimatedOutput}
+                  tool={route.toolName}
+                  estimatedGasUsd={route.estimatedGasUsd}
+                  estimatedDurationSecs={route.estimatedDurationSecs}
+                  source={route.source}
+                />
+              )}
+            </div>
+          )}
+
           {operation === "approve" && (
             <div className="mt-4 space-y-3">
               <label className="flex items-center justify-between rounded-lg border border-[#e3e8ef] p-3 text-xs">
@@ -383,9 +456,28 @@ export default function ExplorePage() {
               </div>
               <Gauge size={18} className="text-[#667085]" />
             </div>
-            <div className="max-h-[410px] overflow-auto">
-              {state.testnet.transactions.length ? (
-                state.testnet.transactions.map((tx) => (
+            <div className="flex gap-1.5 overflow-x-auto border-b border-[#edf0f4] px-5 py-2.5">
+              {(["all", "low", "medium", "high", "critical"] as const).map(
+                (level) => (
+                  <button
+                    key={level}
+                    onClick={() => setRiskFilter(level)}
+                    className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-bold uppercase transition-colors ${
+                      riskFilter === level
+                        ? level === "all"
+                          ? "bg-[#101828] text-white"
+                          : `risk-${level}`
+                        : "bg-[#f2f4f7] text-[#667085] hover:bg-[#e3e8ef]"
+                    }`}
+                  >
+                    {level}
+                  </button>
+                ),
+              )}
+            </div>
+            <div className="max-h-[370px] overflow-auto">
+              {visibleTransactions.length ? (
+                visibleTransactions.map((tx) => (
                   <div
                     key={tx.id}
                     className="grid gap-3 border-b border-[#edf0f4] px-5 py-4 last:border-0 sm:grid-cols-[1fr_1fr_.7fr_auto] sm:items-center"
@@ -423,9 +515,15 @@ export default function ExplorePage() {
                 ))
               ) : (
                 <div className="px-5 py-12 text-center">
-                  <p className="text-sm font-semibold">Ledger is empty</p>
+                  <p className="text-sm font-semibold">
+                    {riskFilter === "all"
+                      ? "Ledger is empty"
+                      : `No ${riskFilter} risk transactions`}
+                  </p>
                   <p className="mt-2 text-xs text-[#667085]">
-                    Compose any operation to begin exploring.
+                    {riskFilter === "all"
+                      ? "Compose any operation to begin exploring."
+                      : "Try a different risk filter."}
                   </p>
                 </div>
               )}
