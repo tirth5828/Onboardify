@@ -51,12 +51,18 @@ export function RouteCard({
           )}
         </div>
         <div className="flex items-center gap-3 text-[10px] text-[#667085]">
-          <span className="flex items-center gap-1">
-            <Clock size={10} />
+          <span
+            className="flex items-center gap-1"
+            aria-label={`Estimated time: ${minutes} minutes`}
+          >
+            <Clock size={10} aria-hidden="true" />
             {minutes}m
           </span>
-          <span className="flex items-center gap-1">
-            <Fuel size={10} />${estimatedGasUsd.toFixed(2)}
+          <span
+            className="flex items-center gap-1"
+            aria-label={`Estimated gas: $${estimatedGasUsd.toFixed(2)}`}
+          >
+            <Fuel size={10} aria-hidden="true" />${estimatedGasUsd.toFixed(2)}
           </span>
         </div>
       </div>
@@ -68,7 +74,7 @@ export function RouteCard({
             {fromAmount} {fromToken}
           </p>
         </div>
-        <ArrowRight size={14} className="shrink-0 text-[#98a2b3]" />
+        <ArrowRight size={14} className="shrink-0 text-[#98a2b3]" aria-hidden="true" />
         <div className="flex-1 rounded-lg bg-white p-3 text-center">
           <p className="text-[10px] text-[#667085]">{toChain}</p>
           <p className="mt-1 font-mono text-sm font-bold">
