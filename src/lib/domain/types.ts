@@ -8,8 +8,6 @@ export type MirrorAction =
 
 export type GuardedAction = "cancel_flagged" | "execute_safe";
 
-export type PathwayId = "onchain" | "markets";
-
 export type TestnetOperation =
   | "transfer"
   | "swap"
@@ -59,42 +57,13 @@ export interface TestnetState {
   findings: MonitorFinding[];
 }
 
-export type MarketsAction =
-  | "acknowledge_custody"
-  | "compare_settlement"
-  | "fund_account"
-  | "allocate"
-  | "exit_position";
-
-export interface MarketAllocation {
-  instrument: "USDC" | "TBILL" | "ETH" | "WSTETH" | "DEX_LP";
-  valueUsd: number;
-}
-
-export interface MarketActivity {
-  id: string;
-  title: string;
-  detail: string;
-  level: RiskLevel;
-  createdAt: string;
-}
-
-export interface MarketsState {
-  completedActions: MarketsAction[];
-  brokerageValueUsd: number;
-  onchainCashUsd: number;
-  allocations: MarketAllocation[];
-  activity: MarketActivity[];
-}
-
 export type ScoreEventKey =
   | "mirror.safe_send"
   | "mirror.safe_swap"
   | "mirror.safe_loan"
   | "mirror.scam_recovery"
   | "guarded.cancelled"
-  | "guarded.executed"
-  | "privacy.paid";
+  | "guarded.executed";
 
 export interface SimulationState {
   ethBalance: number;
@@ -125,29 +94,6 @@ export interface GuardedState {
   executeTxHash: string | null;
 }
 
-export interface PrivacyState {
-  status: "locked" | "ready" | "processing" | "complete" | "failed";
-  unlinkAddress: string | null;
-  payerAddress: string | null;
-  fundingTxHash: string | null;
-  paymentTxHash: string | null;
-  resourceUrl: string | null;
-  error: string | null;
-}
-
-export interface WorldState {
-  verified: boolean;
-  nullifierHash: string | null;
-  verifiedAt: string | null;
-}
-
-export interface PassportState {
-  claimed: boolean;
-  tokenId: string | null;
-  txHash: string | null;
-  claimedAt: string | null;
-}
-
 export interface ScoreEvent {
   key: ScoreEventKey;
   points: number;
@@ -165,14 +111,9 @@ export interface ActivityItem {
 export interface JourneyState {
   userId: string;
   walletAddress: string | null;
-  pathway: PathwayId | null;
   simulation: SimulationState;
   testnet: TestnetState;
-  markets: MarketsState;
   guarded: GuardedState;
-  privacy: PrivacyState;
-  world: WorldState;
-  passport: PassportState;
   scoreEvents: ScoreEvent[];
   createdAt: string;
   updatedAt: string;
@@ -182,12 +123,9 @@ export interface JourneySummary {
   score: number;
   mirrorScore: number;
   guardedScore: number;
-  privacyScore: number;
   mirrorComplete: boolean;
   guardedUnlocked: boolean;
-  passportEligible: boolean;
   skills: string[];
-  marketsProgress: number;
   monitoredOperations: number;
   unresolvedFindings: number;
 }
