@@ -23,19 +23,42 @@ export const GUARDED_VAULT_ABI = [
     inputs: [{ name: "intentId", type: "bytes32" }],
     outputs: [],
   },
-] as const;
-
-export const PASSPORT_ABI = [
   {
     type: "function",
-    name: "mint",
-    stateMutability: "nonpayable",
-    inputs: [
+    name: "intents",
+    stateMutability: "view",
+    inputs: [{ name: "intentId", type: "bytes32" }],
+    outputs: [
+      { name: "owner", type: "address" },
       { name: "recipient", type: "address" },
-      { name: "nullifierHash", type: "bytes32" },
-      { name: "score", type: "uint16" },
-      { name: "skillMask", type: "uint32" },
+      { name: "amount", type: "uint128" },
+      { name: "executeAfter", type: "uint64" },
+      { name: "cancelled", type: "bool" },
+      { name: "executed", type: "bool" },
     ],
-    outputs: [{ name: "tokenId", type: "uint256" }],
+  },
+  {
+    type: "event",
+    name: "IntentQueued",
+    inputs: [
+      { name: "intentId", type: "bytes32", indexed: true },
+      { name: "owner", type: "address", indexed: true },
+      { name: "recipient", type: "address", indexed: true },
+      { name: "amount", type: "uint256", indexed: false },
+      { name: "executeAfter", type: "uint64", indexed: false },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "IntentCancelled",
+    inputs: [{ name: "intentId", type: "bytes32", indexed: true }],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "IntentExecuted",
+    inputs: [{ name: "intentId", type: "bytes32", indexed: true }],
+    anonymous: false,
   },
 ] as const;
