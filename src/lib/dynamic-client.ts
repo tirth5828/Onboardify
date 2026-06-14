@@ -20,5 +20,8 @@ export const dynamicClient = environmentId
 
 if (dynamicClient) {
   addEvmExtension();
+  // Ledger and other hardware wallets are supported natively by Dynamic.
+  // Enable via Dynamic Dashboard → your project → Chain settings → Hardware Wallets.
+  // No additional npm package is required for SDK v1.8.x.
   void initializeClient();
 }
