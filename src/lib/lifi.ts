@@ -29,11 +29,12 @@ export interface LifiQuoteResult {
 }
 
 function toWei(amount: string, decimals: number): string {
-  const [whole = "0", frac = ""] = amount.split(".");
+  const [rawWhole = "0", frac = ""] = amount.split(".");
+  const whole = rawWhole === "" ? "0" : rawWhole;
   const fracPadded = frac.padEnd(decimals, "0").slice(0, decimals);
+  const safeFrac = fracPadded === "" ? "0" : fracPadded;
   const units =
-    BigInt(whole) * BigInt(10) ** BigInt(decimals) +
-    BigInt(fracPadded.replace(/^0+$/, "0") || "0");
+    BigInt(whole) * BigInt(10) ** BigInt(decimals) + BigInt(safeFrac);
   return units.toString();
 }
 
@@ -67,7 +68,10 @@ export function normalizeQuote(
 ): LifiQuoteResult {
   const toDecimals = TOKEN_DECIMALS[params.toToken] ?? 18;
   const estimatedOutput = raw.estimate?.toAmount
-    ? Number(BigInt(raw.estimate.toAmount)) / 10 ** toDecimals
+    ? Number(
+        (BigInt(raw.estimate.toAmount) * BigInt(1_000_000)) /
+          BigInt(10 ** toDecimals),
+      ) / 1_000_000
     : Number(params.fromAmountUnits) * 0.997;
 
   const estimatedGasUsd = (raw.estimate?.gasCosts ?? []).reduce(
