@@ -44,7 +44,7 @@ describe("journey state machine", () => {
     ).toThrow(/Inspect/);
   });
 
-  it("unlocks guarded mainnet at 70 mirror points", () => {
+  it("unlocks guarded mainnet when all mirror actions complete (mirrorScore >= 55)", () => {
     const state = completeMirror();
     expect(summarizeJourney(state)).toMatchObject({
       mirrorScore: 70,

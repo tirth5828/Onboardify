@@ -4,11 +4,7 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },
-  serverExternalPackages: [
-    "@neondatabase/serverless",
-    "@unlink-xyz/sdk",
-    "@circle-fin/x402-batching",
-  ],
+  serverExternalPackages: ["@neondatabase/serverless"],
 };
 
 export default nextConfig;
