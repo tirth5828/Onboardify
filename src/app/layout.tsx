@@ -8,7 +8,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Mainnet Ready | Monitored Testnet Environment",
   description:
-    "A monitored testnet environment with onchain and stock-market onboarding pathways.",
+    "A monitored testnet environment for practicing onchain custody, swaps, lending, and guarded settlement.",
 };
 
 export default function RootLayout({
