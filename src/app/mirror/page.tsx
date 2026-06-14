@@ -305,7 +305,7 @@ export default function MirrorPage() {
         </div>
       </section>
 
-      {summary.mirrorComplete && (
+      {summary.guardedUnlocked && (
         <div className="mt-5 flex flex-col gap-4 rounded-xl border border-[#cbe8dc] bg-[#eaf8f2] p-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#087a55] text-white">
